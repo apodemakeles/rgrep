@@ -1,5 +1,5 @@
 use colored::*;
-use regex::{Matches, Regex};
+use regex::Regex;
 
 fn grep<'a, 'b>(r: &'a Regex, input: &'b str) -> Option<Vec<Segment<'b>>> {
     let matches = r.find_iter(input);
@@ -31,6 +31,31 @@ fn grep<'a, 'b>(r: &'a Regex, input: &'b str) -> Option<Vec<Segment<'b>>> {
     Some(v)
 }
 
+fn print_if_match<'a, 'b>(r: &'a Regex, input: &'b str, line: usize) {
+    if let Some(segments) = grep(r, input) {
+        let char_indies = segments
+            .iter()
+            .filter(|s| match s {
+                Segment::Keyword(_) => true,
+                _ => false,
+            })
+            .map(|s| match s {
+                Segment::Keyword(keyword) => keyword.char_start.to_string(),
+                _ => panic!("error"),
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        print!("{}-{}: ", line, char_indies);
+        for segment in segments {
+            match segment {
+                Segment::Text(s) => print!("{}", s),
+                Segment::Keyword(keyword) => print!("{}", keyword.text.red()),
+            }
+        }
+        print!("{}", "\n");
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum Segment<'a> {
     Text(&'a str),
@@ -44,8 +69,9 @@ struct Keyword<'a> {
 }
 
 fn main() {
-    let v = grep(&Regex::new(r"一只").unwrap(), "这里有一只鸟,那里有一只鱼。");
-    println!("{:?}", v.unwrap());
+    let r = Regex::new(r"一只").unwrap();
+    let input = "这里有一只鸟,那里有一只鱼。";
+    print_if_match(&r, input, 5);
 }
 
 #[cfg(test)]
