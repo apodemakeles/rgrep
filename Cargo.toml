@@ -9,3 +9,5 @@ edition = "2021"
 regex = "1.6.0"
 lazy_static = "1.4.0"
 colored = "2.0.0"
+tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive"] }

@@ -1,5 +1,12 @@
+use std::{
+    io::{BufRead, BufReader, Result},
+    path::Path,
+};
+
+use clap::Parser;
 use colored::*;
 use regex::Regex;
+use tokio::fs::File;
 
 fn grep<'a, 'b>(r: &'a Regex, input: &'b str) -> Option<Vec<Segment<'b>>> {
     let matches = r.find_iter(input);
@@ -31,7 +38,7 @@ fn grep<'a, 'b>(r: &'a Regex, input: &'b str) -> Option<Vec<Segment<'b>>> {
     Some(v)
 }
 
-fn print_if_match<'a, 'b>(r: &'a Regex, input: &'b str, line: usize) {
+fn print_if_match<'a, 'b>(r: &Regex, input: &str, line: usize) {
     if let Some(segments) = grep(r, input) {
         let char_indies = segments
             .iter()
@@ -56,6 +63,27 @@ fn print_if_match<'a, 'b>(r: &'a Regex, input: &'b str, line: usize) {
     }
 }
 
+async fn grep_file(r: &Regex, path: impl AsRef<Path>) -> Result<()> {
+    println!("{}:", path.as_ref().display());
+
+    let file = File::open(path).await?;
+    let file = file.into_std().await;
+
+    let mut num = 0;
+    for line_res in BufReader::new(file).lines() {
+        num += 1;
+        print_if_match(r, &line_res.unwrap(), num);
+    }
+
+    Ok(())
+}
+
+#[derive(Parser, Debug)]
+struct Args {
+    pattern: String,
+    file: String,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum Segment<'a> {
     Text(&'a str),
@@ -68,10 +96,13 @@ struct Keyword<'a> {
     char_start: usize,
 }
 
-fn main() {
-    let r = Regex::new(r"一只").unwrap();
-    let input = "这里有一只鸟,那里有一只鱼。";
-    print_if_match(&r, input, 5);
+#[tokio::main]
+async fn main() -> Result<()> {
+    let args = Args::parse();
+    let r = Regex::new(&args.pattern).unwrap();
+    grep_file(&r, &args.file).await?;
+
+    Ok(())
 }
 
 #[cfg(test)]
